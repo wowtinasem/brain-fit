@@ -1,6 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Brain, Hand, Activity, ChevronLeft, Play, Info, CheckCircle2, Heart, Volume2, Square, Loader2, MessageCircle, Apple, Cat, Lamp, Trophy, RotateCcw, Home, Gamepad2, Mic, MicOff } from 'lucide-react';
 
+const loadPuter = () => {
+  if (window.puter) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://js.puter.com/v2/';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Puter load failed'));
+    document.head.appendChild(script);
+  });
+};
+
 const App = () => {
   const [screen, setScreen] = useState('home');
   const [selectedItem, setSelectedItem] = useState(null);
@@ -60,6 +71,7 @@ const App = () => {
   useEffect(() => {
     const fetchTip = async () => {
       try {
+        await loadPuter();
         const response = await window.puter.ai.chat(
           '시니어(60대 이상)를 위한 건강 상식을 한 문장으로 알려주세요. 운동, 영양, 수면, 뇌 건강, 정신 건강 중 하나의 주제로 간결하게 작성해주세요. 따옴표나 특수문자 없이 순수한 문장만 출력하세요.',
           { model: 'gpt-4o-mini' }
@@ -146,7 +158,7 @@ const App = () => {
 형식: [{"hint":"힌트 문장","answer":"정답","wrong":["오답1","오답2"]}]
 hint는 사물의 특징을 설명하는 수수께끼이고, answer는 정답, wrong는 오답 2개입니다.`;
 
-    const aiPromise = window.puter.ai.chat(prompt, { model: 'gpt-4o-mini' });
+    const aiPromise = loadPuter().then(() => window.puter.ai.chat(prompt, { model: 'gpt-4o-mini' }));
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
     Promise.race([aiPromise, timeoutPromise]).then(response => {
       const text = typeof response === 'string' ? response : response?.message?.content || response?.toString();
