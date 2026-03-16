@@ -69,25 +69,8 @@ const App = () => {
   ];
 
   useEffect(() => {
-    const fetchTip = async () => {
-      try {
-        await loadPuter();
-        const response = await window.puter.ai.chat(
-          '시니어(60대 이상)를 위한 건강 상식을 한 문장으로 알려주세요. 운동, 영양, 수면, 뇌 건강, 정신 건강 중 하나의 주제로 간결하게 작성해주세요. 따옴표나 특수문자 없이 순수한 문장만 출력하세요.',
-          { model: 'gpt-4o-mini' }
-        );
-        const tip = typeof response === 'string' ? response : response?.message?.content || response?.toString();
-        if (tip && tip.length > 5) {
-          setHealthTip(tip.trim());
-        } else {
-          setHealthTip(fallbackTips[Math.floor(Math.random() * fallbackTips.length)]);
-        }
-      } catch {
-        setHealthTip(fallbackTips[Math.floor(Math.random() * fallbackTips.length)]);
-      }
-      setTipLoading(false);
-    };
-    fetchTip();
+    setHealthTip(fallbackTips[Math.floor(Math.random() * fallbackTips.length)]);
+    setTipLoading(false);
   }, []);
 
   let fallbackQuizData = {
