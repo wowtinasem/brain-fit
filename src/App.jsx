@@ -1241,7 +1241,7 @@ const App = () => {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-20">
+        <main className="flex-1 px-4 sm:px-6 py-4 sm:py-6 pb-20">
           {screen === 'home' && renderHome()}
           {screen === 'exercises' && renderList(exercises, '맨손 운동 목록', 'bg-emerald-500')}
           {screen === 'games' && renderList(games, '두뇌 게임 목록', 'bg-amber-500')}
