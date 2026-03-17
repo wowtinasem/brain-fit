@@ -98,7 +98,7 @@ const App = () => {
     setTipLoading(false);
   }, []);
 
-  const quizData = {
+  let quizData = {
     fruit: [
       { hint: '노란색이고 길쭉하며, 원숭이가 좋아해요.', answer: '바나나', wrong: ['사과', '포도'] },
       { hint: '빨갛고 둥글며, 의사 선생님이 싫어한다는 과일이에요.', answer: '사과', wrong: ['귤', '배'] },
@@ -152,13 +152,26 @@ const App = () => {
     setScore(0);
     setSelectedAnswer(null);
 
-    // Immediately start with random fallback questions (no loading)
+    // Immediately start with random questions (no loading)
     const questions = shuffleArray(quizData[category]).slice(0, 5);
     setActiveQuizData(questions);
     setShuffledChoices(shuffleArray([questions[0].answer, ...questions[0].wrong]));
     setQuizLoading(false);
     setScreen('wordQuiz');
 
+    // Try Gemini API in background — add new questions to pool for future rounds
+    fetch(`/api/generate-quiz?category=${category}`)
+      .then(res => res.json())
+      .then(newQuestions => {
+        if (Array.isArray(newQuestions) && newQuestions.length >= 1 &&
+            newQuestions.every(q => q.hint && q.answer && q.wrong?.length === 2)) {
+          const unique = newQuestions.filter(nq => !quizData[category].some(eq => eq.answer === nq.answer));
+          if (unique.length > 0) {
+            quizData[category] = [...quizData[category], ...unique];
+          }
+        }
+      })
+      .catch(() => {});
   };
 
   const handleAnswer = (choice) => {
@@ -1176,7 +1189,7 @@ const App = () => {
         </main>
 
         {/* Bottom Nav */}
-        <nav className="sticky bottom-0 bg-white border-t border-gray-100 flex items-center justify-around px-4 py-2 sm:py-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <nav className="sticky bottom-0 z-10 bg-white border-t border-gray-100 flex items-center justify-around px-4 py-2 sm:py-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <button
             onClick={() => goBack('home')}
             className={`flex flex-col items-center gap-0.5 sm:gap-1 ${screen === 'home' ? 'text-indigo-600' : 'text-gray-400'}`}
