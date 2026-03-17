@@ -1,17 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Brain, Hand, Activity, ChevronLeft, Play, Info, CheckCircle2, Heart, Volume2, Square, Loader2, MessageCircle, Apple, Cat, Lamp, Trophy, RotateCcw, Home, Gamepad2, Mic, MicOff } from 'lucide-react';
 
-const loadPuter = () => {
-  if (window.puter) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://js.puter.com/v2/';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Puter load failed'));
-    document.head.appendChild(script);
-  });
-};
-
 // Shared AudioContext for mobile compatibility
 let sharedAudioCtx = null;
 const getAudioContext = () => {
@@ -109,7 +98,7 @@ const App = () => {
     setTipLoading(false);
   }, []);
 
-  let fallbackQuizData = {
+  const quizData = {
     fruit: [
       { hint: '노란색이고 길쭉하며, 원숭이가 좋아해요.', answer: '바나나', wrong: ['사과', '포도'] },
       { hint: '빨갛고 둥글며, 의사 선생님이 싫어한다는 과일이에요.', answer: '사과', wrong: ['귤', '배'] },
@@ -164,32 +153,12 @@ const App = () => {
     setSelectedAnswer(null);
 
     // Immediately start with random fallback questions (no loading)
-    const questions = shuffleArray(fallbackQuizData[category]).slice(0, 5);
+    const questions = shuffleArray(quizData[category]).slice(0, 5);
     setActiveQuizData(questions);
     setShuffledChoices(shuffleArray([questions[0].answer, ...questions[0].wrong]));
     setQuizLoading(false);
     setScreen('wordQuiz');
 
-    // Try AI in background — if successful, replace questions (only if still on first question)
-    const categoryLabel = { fruit: '과일', animal: '동물', object: '사물' }[category];
-    const prompt = `${categoryLabel} 카테고리로 수수께끼 퀴즈 5문제를 만들어주세요. 시니어가 풀 수 있는 쉬운 난이도로 해주세요.
-각 문제는 JSON 배열로 출력하세요. 다른 텍스트 없이 JSON만 출력하세요.
-형식: [{"hint":"힌트 문장","answer":"정답","wrong":["오답1","오답2"]}]
-hint는 사물의 특징을 설명하는 수수께끼이고, answer는 정답, wrong는 오답 2개입니다.`;
-
-    const aiPromise = loadPuter().then(() => window.puter.ai.chat(prompt, { model: 'gpt-4o-mini' }));
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
-    Promise.race([aiPromise, timeoutPromise]).then(response => {
-      const text = typeof response === 'string' ? response : response?.message?.content || response?.toString();
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed.length === 5 && parsed.every(q => q.hint && q.answer && q.wrong?.length === 2)) {
-          // Save for next round — don't disrupt current game
-          fallbackQuizData[category] = [...fallbackQuizData[category], ...parsed.filter(p => !fallbackQuizData[category].some(f => f.answer === p.answer))];
-        }
-      }
-    }).catch(() => {});
   };
 
   const handleAnswer = (choice) => {
