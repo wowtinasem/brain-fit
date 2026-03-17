@@ -12,6 +12,42 @@ const loadPuter = () => {
   });
 };
 
+// Shared AudioContext for mobile compatibility
+let sharedAudioCtx = null;
+const getAudioContext = () => {
+  if (!sharedAudioCtx) {
+    sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (sharedAudioCtx.state === 'suspended') {
+    sharedAudioCtx.resume();
+  }
+  return sharedAudioCtx;
+};
+
+// Unlock audio on first user interaction (mobile browsers require this)
+let audioUnlocked = false;
+const unlockAudio = () => {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  // Unlock AudioContext
+  const ctx = getAudioContext();
+  const buffer = ctx.createBuffer(1, 1, 22050);
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(ctx.destination);
+  source.start(0);
+  // Unlock iOS Safari TTS
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance('');
+    u.volume = 0;
+    window.speechSynthesis.speak(u);
+  }
+  document.removeEventListener('touchstart', unlockAudio, true);
+  document.removeEventListener('click', unlockAudio, true);
+};
+document.addEventListener('touchstart', unlockAudio, true);
+document.addEventListener('click', unlockAudio, true);
+
 const App = () => {
   const [screen, setScreen] = useState('home');
   const [selectedItem, setSelectedItem] = useState(null);
@@ -474,7 +510,7 @@ hint는 사물의 특징을 설명하는 수수께끼이고, answer는 정답, w
 
   const playCelebrationSound = useCallback(() => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = getAudioContext();
       const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
       notes.forEach((freq, i) => {
         const osc = ctx.createOscillator();
@@ -972,6 +1008,7 @@ hint는 사물의 특징을 설명하는 수수께끼이고, answer는 정답, w
               value={gameAnswer}
               onChange={(e) => setGameAnswer(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && gameAnswer.trim() && !gameFeedback && checkReverseAnswer()}
+              onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)}
               placeholder="거꾸로 입력..."
               disabled={gameFeedback !== null || isListening}
               className="flex-1 p-3 sm:p-4 rounded-xl border-2 border-gray-200 text-center text-lg sm:text-xl font-bold focus:border-amber-400 focus:outline-none transition-all disabled:bg-gray-50"
@@ -1156,7 +1193,7 @@ hint는 사물의 특징을 설명하는 수수께끼이고, answer는 정답, w
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-20">
           {screen === 'home' && renderHome()}
           {screen === 'exercises' && renderList(exercises, '맨손 운동 목록', 'bg-emerald-500')}
           {screen === 'games' && renderList(games, '두뇌 게임 목록', 'bg-amber-500')}
