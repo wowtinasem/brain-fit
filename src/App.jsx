@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Brain, Hand, Activity, ChevronLeft, Play, Info, CheckCircle2, Heart, Volume2, Square, Loader2, MessageCircle, Apple, Cat, Lamp, Trophy, RotateCcw, Home, Gamepad2, Mic, MicOff } from 'lucide-react';
+import { Brain, Hand, Activity, ChevronLeft, Play, Info, CheckCircle2, Heart, Volume2, Square, Loader2, MessageCircle, Apple, Cat, Lamp, Trophy, RotateCcw, Home, Gamepad2, Mic, MicOff, Key } from 'lucide-react';
 
 // Shared AudioContext for mobile compatibility
 let sharedAudioCtx = null;
@@ -71,6 +71,14 @@ const App = () => {
   const [marketPool, setMarketPool] = useState([]);
   const [marketShuffledPicks, setMarketShuffledPicks] = useState([]);
   const [isListening, setIsListening] = useState(false);
+
+  // API key management
+  const FREE_EXPIRY = new Date('2026-04-25T23:59:59+09:00');
+  const [customApiKey, setCustomApiKey] = useState(() => localStorage.getItem('brainfit_api_key') || '');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeyError, setApiKeyError] = useState('');
+  const isExpired = new Date() > FREE_EXPIRY;
+  const hasApiAccess = !isExpired || customApiKey;
 
   // Game data
   const reverseWords = ['사과', '바나나', '거울', '구름', '나비', '도서관', '무지개', '선풍기', '해바라기', '냉장고', '토끼', '자전거', '연필', '가방', '우산'];
@@ -160,18 +168,21 @@ const App = () => {
     setScreen('wordQuiz');
 
     // Try Gemini API in background — add new questions to pool for future rounds
-    fetch(`/api/generate-quiz?category=${category}`)
-      .then(res => res.json())
-      .then(newQuestions => {
-        if (Array.isArray(newQuestions) && newQuestions.length >= 1 &&
-            newQuestions.every(q => q.hint && q.answer && q.wrong?.length === 2)) {
-          const unique = newQuestions.filter(nq => !quizData[category].some(eq => eq.answer === nq.answer));
-          if (unique.length > 0) {
-            quizData[category] = [...quizData[category], ...unique];
+    if (hasApiAccess) {
+      const keyParam = customApiKey ? `&key=${encodeURIComponent(customApiKey)}` : '';
+      fetch(`/api/generate-quiz?category=${category}${keyParam}`)
+        .then(res => res.json())
+        .then(newQuestions => {
+          if (Array.isArray(newQuestions) && newQuestions.length >= 1 &&
+              newQuestions.every(q => q.hint && q.answer && q.wrong?.length === 2)) {
+            const unique = newQuestions.filter(nq => !quizData[category].some(eq => eq.answer === nq.answer));
+            if (unique.length > 0) {
+              quizData[category] = [...quizData[category], ...unique];
+            }
           }
-        }
-      })
-      .catch(() => {});
+        })
+        .catch(() => {});
+    }
   };
 
   const handleAnswer = (choice) => {
@@ -590,6 +601,61 @@ const App = () => {
           </div>
         ) : (
           <p className="text-gray-600 leading-relaxed text-sm sm:text-base">{healthTip}</p>
+        )}
+      </div>
+
+      {/* API 사용기한 / 키 입력 */}
+      <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100">
+        {isExpired && !customApiKey ? (
+          <>
+            <h3 className="flex items-center gap-2 font-bold text-red-600 mb-3 text-sm sm:text-base">
+              <Key className="w-4 h-4 sm:w-5 sm:h-5" /> 무료 사용기한이 만료되었습니다
+            </h3>
+            <p className="text-gray-500 text-xs sm:text-sm mb-3">
+              AI 퀴즈 생성을 계속 사용하려면 Google Gemini API 키를 입력해주세요.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="API 키를 입력하세요"
+                className="flex-1 p-2.5 sm:p-3 rounded-xl border-2 border-gray-200 text-sm focus:border-indigo-400 focus:outline-none"
+              />
+              <button
+                onClick={() => {
+                  if (!apiKeyInput.trim()) return;
+                  localStorage.setItem('brainfit_api_key', apiKeyInput.trim());
+                  setCustomApiKey(apiKeyInput.trim());
+                  setApiKeyInput('');
+                  setApiKeyError('');
+                }}
+                className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 active:scale-[0.98] transition-all"
+              >
+                저장
+              </button>
+            </div>
+            {apiKeyError && <p className="mt-2 text-red-500 text-xs">{apiKeyError}</p>}
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400 text-xs sm:text-sm">
+                {customApiKey ? '내 API 키 사용 중' : `무료 사용기한: 2026.04.25`}
+              </span>
+              {customApiKey && (
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('brainfit_api_key');
+                    setCustomApiKey('');
+                  }}
+                  className="text-xs text-red-400 hover:text-red-600"
+                >
+                  키 삭제
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

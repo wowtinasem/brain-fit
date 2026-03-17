@@ -1,14 +1,26 @@
+const FREE_EXPIRY = new Date('2026-04-25T23:59:59+09:00');
+
 export default async function handler(req, res) {
-  const { category } = req.query;
+  const { category, key } = req.query;
   const categoryLabel = { fruit: '과일', animal: '동물', object: '사물' }[category];
 
   if (!categoryLabel) {
     return res.status(400).json({ error: 'Invalid category' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const now = new Date();
+  let apiKey;
+
+  if (key) {
+    // User-provided API key — always use it
+    apiKey = key;
+  } else if (now <= FREE_EXPIRY) {
+    // Before expiry — use built-in key
+    apiKey = process.env.GEMINI_API_KEY;
+  }
+
   if (!apiKey) {
-    return res.status(500).json({ error: 'API key not configured' });
+    return res.status(403).json({ error: 'expired' });
   }
 
   const prompt = `${categoryLabel} 카테고리로 수수께끼 퀴즈 5문제를 만들어주세요. 시니어가 풀 수 있는 쉬운 난이도로 해주세요.
@@ -29,6 +41,11 @@ hint는 사물의 특징을 설명하는 수수께끼이고, answer는 정답, w
     );
 
     const data = await response.json();
+
+    if (data.error) {
+      return res.status(401).json({ error: 'invalid_key' });
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     const jsonMatch = text?.match(/\[[\s\S]*\]/);
 
