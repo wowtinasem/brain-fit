@@ -657,6 +657,14 @@ const App = () => {
             </div>
           </>
         )}
+        <a
+          href="https://ykhprofile-site.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 block w-full text-center text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-lg transition-colors"
+        >
+          사용문의 바로가기
+        </a>
       </div>
     </div>
   );
